@@ -21,13 +21,15 @@ def generate_image(prompt, device, iteration, seed=None):
     image.save(filename)
     return filename
 
-def create_video(filenames, prompt, fps=12):
+def create_video(filenames, prompt, fps=24):
     output_name = f"{prompt.replace(' ', '_')}_generated_video.mp4"
-    ffmpeg_cmd = ["ffmpeg", "-y", "-f", "concat", "-i", "file_list.txt", "-framerate", str(fps), "-c:v", "libx264", "-profile:v", "high", "-crf", "20", "-pix_fmt", "yuv420p", output_name]
+    duration = 1 / fps
+    ffmpeg_cmd = ["ffmpeg", "-y", "-f", "concat", "-i", "file_list.txt", "-c:v", "libx264", "-profile:v", "high", "-crf", "20", "-pix_fmt", "yuv420p", output_name]
 
     with open("file_list.txt", "w") as f:
         for filename in filenames:
             f.write(f"file '{filename}'\n")
+            f.write(f"duration {duration}\n")
 
     subprocess.run(ffmpeg_cmd)
 
@@ -35,12 +37,17 @@ def create_video(filenames, prompt, fps=12):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate images from text prompt.")
-    parser.add_argument("prompt", type=str, help="Text prompt for image generation.")
+    parser.add_argument("prompt", type=str, nargs='?', default=None, help="Text prompt for image generation.")
     parser.add_argument("--iterations", type=int, default=1, help="Number of images to generate.")
     parser.add_argument("--seed", type=int, default=None, help="Random seed for image generation.")
     parser.add_argument("--fps", type=int, default=24, help="Frames per second for generated video.")
 
     args = parser.parse_args()
+
+    if args.prompt is None:
+        print("Error: No prompt provided.")
+        parser.print_help()
+        exit(1)
 
     device = "cpu"
     prompt = args.prompt
