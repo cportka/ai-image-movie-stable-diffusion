@@ -27,8 +27,8 @@ If no arguments are provided or an error occurs, a help message will be displaye
 
 ## Example
 
-To generate four images with a 1 fps video using a seed of 42, run:
+To generate a bunch of images with a 4 fps video using a seed of 420, run:
 
 python generate_image_and_video.py --iterations 69 --seed 420 --fps 4 "a colorful star"
 
-This will generate image files for each frameand an mp4 video file in the same directory as the script.
+This will generate image files for each frame and an mp4 video file in the same directory as the script.
