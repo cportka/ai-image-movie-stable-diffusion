@@ -3,13 +3,75 @@ import os
 import subprocess
 import torch
 import re
+import sys
+import pickle
 from diffusers import StableDiffusionPipeline
 from transformers import CLIPImageProcessor
+from pathlib import Path
+
+class CustomStableDiffusionPipeline(StableDiffusionPipeline):
+    def load_state_dict(self, state_dict):
+        if "vae" in state_dict:
+            self.vae.load_state_dict(state_dict["vae"])
+        if "text_encoder" in state_dict:
+            self.text_encoder.load_state_dict(state_dict["text_encoder"])
+        if "unet" in state_dict:
+            self.unet.load_state_dict(state_dict["unet"])
+        if "scheduler" in state_dict:
+            self.scheduler.load_state_dict(state_dict["scheduler"])
+        if "safety_checker" in state_dict:
+            self.safety_checker.load_state_dict(state_dict["safety_checker"])
+        if "feature_extractor" in state_dict:
+            self.feature_extractor.load_state_dict(state_dict["feature_extractor"])
+
+def download_and_save_model(model_id):
+    pipe = StableDiffusionPipeline.from_pretrained(model_id)
+    with open("sd-v1-4.pkl", "wb") as f:
+        pickle.dump(pipe, f)
+    return pipe
+
+def load_local_model_from_ckpt(model_id, ckpt_path):
+    if ckpt_path.endswith(".pkl"):
+        print("Loading model from pickle file...")
+        with open(ckpt_path, "rb") as f:
+            pipe = pickle.load(f)
+    else:
+        print("Loading model from checkpoint file...")
+        pipe = CustomStableDiffusionPipeline.from_pretrained(model_id)
+        pipe.load_state_dict(torch.load(ckpt_path))
+    return pipe
+
+def load_local_model_from_pickle():
+    with open("sd-v1-4.pkl", "rb") as f:
+        pipe = pickle.load(f)
+    return pipe
+
+def get_local_model(model_id):
+    ckpt_file = None
+    for file in ["stable-diffusion-v1-4", "sd-v1-4.ckpt"]:
+        if Path(file).is_file():
+            ckpt_file = file
+            break
+
+    if ckpt_file:
+        print(f"Loading model from local file '{ckpt_file}'")
+        return load_local_model_from_ckpt(model_id, ckpt_file)
+    elif Path("sd-v1-4.pkl").is_file():
+        print("Loading model from local file 'sd-v1-4.pkl'")
+        return load_local_model_from_pickle()
+    else:
+        print("Model files not found in the current directory.")
+        download_choice = input("Would you like to download the model? (yes/no): ").lower()
+        if download_choice == "yes":
+            print("Downloading and saving model...")
+            return download_and_save_model(model_id)
+        else:
+            print("Exiting the script.")
+            sys.exit(0)
 
 def generate_image(prompt, device, iteration, seed=None):
     model_id = "CompVis/stable-diffusion-v1-4"
-
-    pipe = StableDiffusionPipeline.from_pretrained(model_id)
+    pipe = get_local_model(model_id)
     pipe = pipe.to(device)
 
     if seed is not None:
